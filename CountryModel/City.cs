@@ -12,6 +12,10 @@ public partial class City
     [Key]
     public int CityId { get; set; }
 
+    public required string Name { get; set; }
+
+    public int Population { get; set; }
+
     [Column(TypeName = "numeric(18, 4)")]
     public decimal Latitude { get; set; }
 
