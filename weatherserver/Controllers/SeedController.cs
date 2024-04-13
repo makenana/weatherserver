@@ -10,14 +10,39 @@ using CsvHelper.Configuration;
 using System.Globalization;
 using weatherserver.Data;
 using CsvHelper;
+using Microsoft.AspNetCore.Identity;
 
 namespace weatherserver.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class SeedController(CountriesSourceContext db, IHostEnvironment environment) : ControllerBase
+    public class SeedController(CountriesSourceContext db, IHostEnvironment environment, 
+        UserManager<WorldCitiesUser> userManager) : ControllerBase
     {
         private readonly string _pathName = Path.Combine(environment.ContentRootPath, "Data/worldcities.csv");
+
+        [HttpPost("User")]
+        public async Task<ActionResult> SeedUser()
+        {
+            (string name, string email) = ("user1", "comp584@csun.edu");
+            WorldCitiesUser user = new()
+            {
+                UserName = name,
+                Email = email,
+                SecurityStamp = Guid.NewGuid().ToString()
+            };
+            if (await userManager.FindByNameAsync(name) is not null)
+            {
+                user.UserName = "user2";
+            }
+            _ = await userManager.CreateAsync(user, "P@ssw0rd!")
+                ?? throw new InvalidOperationException();
+            user.EmailConfirmed = true;
+            user.LockoutEnabled = false;
+            await db.SaveChangesAsync();
+
+            return Ok();
+        }
 
         [HttpPost("City")]
         public async Task<ActionResult<City>> SeedCity()
@@ -37,23 +62,23 @@ namespace weatherserver.Controllers
                 IEnumerable<WorldCitiesCsv>? records = csv.GetRecords<WorldCitiesCsv>();
                 foreach (WorldCitiesCsv record in records)
                 {
-                    if (!countries.TryGetValue(record.country, out Country? value))
+                    if (!countries.TryGetValue(record.Country, out Country? value))
                     {
-                        Console.WriteLine($"Not found country for {record.city}");
+                        Console.WriteLine($"Not found country for {record.City}");
                         return NotFound(record);
                     }
 
-                    if (!record.population.HasValue || string.IsNullOrEmpty(record.city_ascii))
+                    if (!record.Population.HasValue || string.IsNullOrEmpty(record.City_ascii))
                     {
-                        Console.WriteLine($"Skipping {record.city}");
+                        Console.WriteLine($"Skipping {record.City}");
                         continue;
                     }
                     City city = new()
                     {
-                        Name = record.city,
-                        Latitude = record.lat,
-                        Longitude = record.lng,
-                        Population = (int)record.population.Value,
+                        Name = record.City,
+                        Latitude = record.Lat,
+                        Longitude = record.Lng,
+                        Population = (int)record.Population.Value,
                         CountryId = value.CountryId
                     };
                     db.Cities.Add(city);
@@ -84,19 +109,19 @@ namespace weatherserver.Controllers
             List<WorldCitiesCsv> records = csv.GetRecords<WorldCitiesCsv>().ToList();
             foreach (WorldCitiesCsv record in records)
             {
-                if (countriesByName.ContainsKey(record.country))
+                if (countriesByName.ContainsKey(record.Country))
                 {
                     continue;
                 }
 
                 Country country = new()
                 {
-                    Name = record.country,
-                    Iso2 = record.iso2,
-                    Iso3 = record.iso3
+                    Name = record.Country,
+                    Iso2 = record.Iso2,
+                    Iso3 = record.Iso3
                 };
                 await db.Countries.AddAsync(country);
-                countriesByName.Add(record.country, country);
+                countriesByName.Add(record.Country, country);
             }
 
             await db.SaveChangesAsync();
