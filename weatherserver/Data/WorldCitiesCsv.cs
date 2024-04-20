@@ -9,7 +9,7 @@
         public string Country { get; set; } = null!;
         public string Iso2 { get; set; } = null!;
         public string Iso3 { get; set; } = null!;
-        public decimal? Population { get; set; }
+        public long? Population { get; set; }
         public long Id { get; set; }
     }
 }
